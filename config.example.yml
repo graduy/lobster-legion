@@ -1,0 +1,150 @@
+# 🦞 Lobster Legion 配置文件
+
+# ==================== 总龙虾配置 ====================
+# 每个总龙虾是一个协调 Agent，负责特定领域的任务
+
+chiefs:
+  # 代码专家
+  - id: chief-code
+    name: 代码专家
+    agentId: main  # OpenClaw agent ID（需要预先配置）
+    specialty: ["代码", "编程", "debug", "refactor", "优化", "review", "python", "javascript", "typescript"]
+    workspace: ./workspaces/code
+    maxSubAgents: 5
+    enabled: true
+
+  # 文档专家
+  - id: chief-doc
+    name: 文档专家
+    agentId: main
+    specialty: ["文档", "写作", "翻译", "润色", "markdown", "readme", "说明"]
+    workspace: ./workspaces/docs
+    maxSubAgents: 3
+    enabled: true
+
+  # 调研专家
+  - id: chief-research
+    name: 调研专家
+    agentId: main
+    specialty: ["调研", "搜索", "分析", "报告", "查", "研究", "market", "research"]
+    workspace: ./workspaces/research
+    maxSubAgents: 5
+    enabled: true
+
+# ==================== 任务路由配置 ====================
+# 定义任务如何自动分配给总龙虾
+
+routing:
+  # 默认总龙虾（当没有匹配任何规则时）
+  default: chief-code
+  
+  # 路由规则（按顺序匹配，命中即停止）
+  rules:
+    - keywords: ["代码", "编程", "debug", "bug", "优化", "refactor", "review"]
+      target: chief-code
+      priority: high
+    
+    - keywords: ["文档", "写", "翻译", "readme", "说明", "markdown"]
+      target: chief-doc
+      priority: normal
+    
+    - keywords: ["调研", "搜索", "查", "分析", "报告", "研究"]
+      target: chief-research
+      priority: normal
+
+# ==================== 知识库配置 ====================
+# 每个总龙虾的独立知识库
+
+knowledge:
+  # 知识库类型：local (本地文件) | feishu (飞书文档)
+  type: local
+  
+  # 本地知识库根路径（relative to skills/lobster-legion/）
+  basePath: ./knowledge-base
+  
+  # Feishu 配置（仅当 type=feishu 时需要）
+  feishu:
+    enabled: false
+    spaceId: ""  # 飞书知识空间 ID
+    folderToken: ""  # 飞书文件夹 Token
+
+# ==================== 子 Agent 配置 ====================
+# 总龙虾 spawn 的小龙虾配置
+
+subagents:
+  # 默认模型（如果总龙虾的 agentId 未指定模型）
+  defaultModel: bailian/qwen3.5-plus
+  
+  # 超时设置（秒）
+  timeoutSeconds: 300
+  
+  # 运行模式：run (一次性) | session (持久会话)
+  mode: run
+  
+  # 是否保留子 Agent 会话历史
+  keepHistory: false
+
+# ==================== 日志配置 ====================
+
+logging:
+  # 日志级别：debug | info | warn | error
+  level: info
+  
+  # 是否保存到文件
+  saveToFile: true
+  
+  # 日志文件路径（relative to skills/lobster-legion/）
+  filePath: ./logs/lobster-legion.log
+  
+  # 是否在控制台输出
+  console: true
+
+# ==================== 高级配置 ====================
+
+advanced:
+  # 任务队列大小（最大等待任务数）
+  maxQueueSize: 10
+  
+  # 并发任务数限制（同时执行的最大任务数）
+  maxConcurrentTasks: 5
+  
+  # 任务重试次数
+  retryAttempts: 2
+  
+  # 是否启用任务缓存（相同任务直接返回缓存结果）
+  enableCache: false
+  
+  # 缓存过期时间（秒）
+  cacheTTL: 3600
+
+# ==================== 通知配置 ====================
+# 任务完成后的通知方式
+
+notifications:
+  # 是否启用通知
+  enabled: false
+  
+  # 通知渠道：message (OpenClaw 消息) | email | webhook
+  channel: message
+  
+  # 通知时机：onComplete (仅完成) | onError (仅错误) | always (总是)
+  when: onComplete
+  
+  # Email 配置（仅当 channel=email 时需要）
+  email:
+    smtpHost: ""
+    smtpPort: 587
+    username: ""
+    password: ""
+    to: ""
+  
+  # Webhook 配置（仅当 channel=webhook 时需要）
+  webhook:
+    url: ""
+    method: POST
+    headers: {}
+
+# ==================== 版本信息 ====================
+
+version: 0.1.0
+configVersion: 1

@@ -1,0 +1,104 @@
+# 🦞 Lobster Legion 配置文件
+
+# ==================== 总龙虾配置 ====================
+
+chiefs:
+  # 代码专家
+  - id: chief-code
+    name: 代码专家
+    agentId: main
+    specialty: ["代码", "编程", "debug", "优化", "python", "javascript", "typescript", "review", "refactor"]
+    workspace: ./workspaces/code
+    maxSubAgents: 5
+    enabled: true
+
+  # 文档专家
+  - id: chief-doc
+    name: 文档专家
+    agentId: main
+    specialty: ["文档", "写作", "翻译", "润色", "markdown", "readme", "说明", "英文", "中文"]
+    workspace: ./workspaces/docs
+    maxSubAgents: 3
+    enabled: true
+
+  # 调研专家
+  - id: chief-research
+    name: 调研专家
+    agentId: main
+    specialty: ["调研", "搜索", "分析", "报告", "查", "研究", "market", "research", "对比"]
+    workspace: ./workspaces/research
+    maxSubAgents: 5
+    enabled: true
+
+# ==================== 任务路由配置 ====================
+
+routing:
+  default: chief-code
+  
+  rules:
+    - keywords: ["代码", "编程", "debug", "bug", "优化", "refactor", "review", "python", "javascript"]
+      target: chief-code
+      priority: high
+    
+    - keywords: ["文档", "写", "翻译", "readme", "说明", "markdown", "润色"]
+      target: chief-doc
+      priority: normal
+    
+    - keywords: ["调研", "搜索", "查", "分析", "报告", "研究", "对比"]
+      target: chief-research
+      priority: normal
+
+# ==================== 知识库配置 ====================
+
+knowledge:
+  type: local
+  basePath: ./knowledge-base
+
+# ==================== 子 Agent 配置 ====================
+
+subagents:
+  defaultModel: bailian/qwen3.5-plus
+  timeoutSeconds: 300
+  mode: run
+  keepHistory: false
+  
+  # ==================== 层级限制 (保护 Token!) ====================
+  # 每个总总龙虾最多 spawn 的总龙虾数量
+  maxChiefsPerCoordinator: 6
+  
+  # 每个总龙虾最多 spawn 的小龙虾数量
+  maxWorkersPerChief: 6
+  
+  # 全局最大并发 Agent 数 (硬限制)
+  maxConcurrentAgents: 36
+  
+  # Token 预算控制
+  tokenBudget:
+    # 每个子 Agent 的最大 tokens
+    maxTokensPerAgent: 50000
+    # 总任务 token 预算
+    maxTokensPerTask: 500000
+    # 超出预算时：warn (警告但继续) | stop (停止 spawn)
+    onBudgetExceeded: warn
+
+# ==================== 日志配置 ====================
+
+logging:
+  level: info
+  saveToFile: true
+  filePath: ./logs/lobster-legion.log
+  console: true
+
+# ==================== 高级配置 ====================
+
+advanced:
+  maxQueueSize: 10
+  maxConcurrentTasks: 5
+  retryAttempts: 2
+  enableCache: false
+  cacheTTL: 3600
+
+# ==================== 版本信息 ====================
+
+version: 0.1.0
+configVersion: 1
