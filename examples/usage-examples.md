@@ -290,6 +290,129 @@ chiefs:
 
 ---
 
+## 示例 11: 论文写作 - 完整流程
+
+**用户指令：**
+```
+我要写一篇关于"大语言模型在多 Agent 协作中的应用"的学术论文，帮我：
+- 调研相关文献
+- 设计论文结构
+- 撰写初稿
+- 格式化参考文献
+```
+
+**龙虾军团处理流程：**
+```
+总协调器
+├─ 调研专家 → 检索 ACL/EMNLP/NeurIPS 相关论文
+├─ 代码专家 → 设计实验 + 编写代码
+└─ 文档专家 → 撰写论文 + 格式化引用
+```
+
+**输出：**
+```
+🦞 龙虾军团 - 论文写作报告
+
+【调研专家】
+核心文献：
+1. "Multi-Agent Collaboration with LLMs" (EMNLP 2025)
+2. "LLM-Based Task Decomposition" (NeurIPS 2025)
+3. "Distributed Agent Communication" (ACL 2025)
+
+【代码专家】
+实验设计：
+- 对比实验：单 Agent vs 多 Agent
+- 评估指标：任务完成率、Token 效率
+- 数据集：AgentBench
+
+【文档专家】
+论文结构：
+1. Introduction
+2. Related Work
+3. Methodology
+4. Experiments
+5. Conclusion
+
+参考文献 (BibTeX):
+@inproceedings{liu2025multi,
+  title={Multi-Agent Collaboration with LLMs},
+  author={Liu et al.},
+  booktitle={EMNLP},
+  year={2025}
+}
+```
+
+---
+
+## 示例 12: 论文写作 - 指定场景配置
+
+**用户指令：**
+```
+@论文专家 使用论文写作模板，帮我写 Methodology 章节
+```
+
+**龙虾军团处理流程：**
+1. 检测到 @提及 → 路由到论文专家总龙虾
+2. 加载论文写作配置模板
+3. 应用学术写作规范
+4. 生成 Methodology 章节
+
+**配置：**
+```yaml
+chiefs:
+  - id: chief-paper
+    name: 论文专家
+    specialty: ["论文", "学术写作", "methodology", "experiment"]
+    template: paper-writing
+    workspace: ./workspaces/paper
+    maxSubAgents: 5
+```
+
+**输出：**
+```
+🦞 论文专家 - Methodology 章节
+
+## 3. Methodology
+
+### 3.1 Framework Overview
+Our Lobster Legion framework employs a hierarchical multi-agent...
+
+### 3.2 Task Routing Mechanism
+The routing mechanism uses keyword matching with priority...
+
+### 3.3 Knowledge Isolation
+Each chief agent maintains an independent knowledge base...
+```
+
+---
+
+## 示例 13: 论文写作 - 引用管理
+
+**用户指令：**
+```
+@论文专家 记住这些参考文献，后续写作中使用：
+1. "Attention Is All You Need" - Vaswani et al. 2017
+2. "Language Models are Few-Shot Learners" - Brown et al. 2020
+```
+
+**龙虾军团处理流程：**
+1. 路由到论文专家
+2. 识别"记住"关键词 → 保存到引用知识库
+3. 生成 BibTeX 格式
+4. 确认保存成功
+
+**引用知识库保存：**
+```
+knowledge-base/chief-paper/references/paper-writing.bib
+```
+
+**后续使用：**
+```
+@论文专家 在 Related Work 中引用之前保存的文献
+```
+
+---
+
 ## 最佳实践
 
 ### 1. 任务描述要清晰

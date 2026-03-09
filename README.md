@@ -125,6 +125,33 @@ Lobster Legion:
 Output: Three complete reports (parallel execution, 3x efficiency)
 ```
 
+### Case 4: Academic Paper Writing
+
+```
+User: Write a paper about "Multi-Agent Collaboration with LLMs"
+
+Lobster Legion auto-assigns:
+├─ Paper Expert → Overall structure + writing
+├─ Research Expert → Literature review + citation management
+├─ Code Expert → Experiment design + implementation
+└─ Doc Expert → Formatting + proofreading
+
+Output: Complete academic paper (Abstract, Intro, Related Work, Methodology, Experiments, Conclusion)
+```
+
+### Case 5: Paper Writing with Citation Management
+
+```
+User: @Paper Expert Write the Methodology section, cite the references I saved earlier
+
+Lobster Legion:
+├─ Paper Expert → Load paper-writing template
+├─ Citation Manager → Retrieve saved references from knowledge base
+└─ Auto-format citations in ACL style
+
+Output: Methodology section with properly formatted citations
+```
+
 ---
 
 ## 📁 Directory Structure
@@ -153,6 +180,25 @@ lobster-legion/
 ├── workspaces/                # Workspaces (auto-generated)
 └── knowledge-base/            # Knowledge base (auto-generated)
 ```
+
+---
+
+## 📖 API Quick Reference
+
+### Configuration Fields
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `chiefs[].id` | string | - | Unique chief identifier |
+| `chiefs[].name` | string | - | Display name |
+| `chiefs[].specialty` | string[] | - | Routing keywords |
+| `chiefs[].maxSubAgents` | number | 6 | Max sub-agents per chief |
+| `routing.rules[].keywords` | string[] | - | Trigger keywords |
+| `routing.rules[].target` | string | - | Target chief ID |
+| `subagents.maxConcurrentAgents` | number | 36 | Global concurrent limit |
+| `tokenBudget.maxTokensPerTask` | number | 500000 | Per-task token limit |
+
+For complete API documentation, see [docs/API.md](docs/API.md).
 
 ---
 
@@ -252,7 +298,10 @@ All tests passed! 🎉
 | [README.md](README.md) | English documentation |
 | [README-CN.md](README-CN.md) | 中文完整文档 |
 | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | Architecture + Token budget |
+| [docs/API.md](docs/API.md) | API reference & configuration |
 | [examples/usage-examples.md](examples/usage-examples.md) | 10 use cases |
+| [CONTRIBUTING.md](CONTRIBUTING.md) | Contribution guidelines |
+| [CITATION.cff](CITATION.cff) | Citation information for research |
 
 ---
 
@@ -271,6 +320,36 @@ Welcome to submit Issues and PRs!
 ## 📄 License
 
 MIT License - See [LICENSE](LICENSE) file for details
+
+---
+
+## 📚 Citing Lobster Legion
+
+If you use Lobster Legion in your research, please cite it using the following reference:
+
+**BibTeX:**
+```bibtex
+@software{lobster_legion_2026,
+  author       = {Grady, Your Name},
+  title        = {Lobster Legion: Multi-Agent Collaboration Framework},
+  abstract     = {A configurable multi-agent collaboration framework for OpenClaw},
+  version      = {0.1.0},
+  doi          = {10.0000/lobster-legion.0.1.0},
+  url          = {https://github.com/graduy/lobster-legion},
+  license      = {MIT},
+  date         = {2026-03-09},
+  keywords     = {multi-agent systems, LLM, task distribution, OpenClaw}
+}
+```
+
+**APA:**
+```
+Grady, Y. (2026). Lobster Legion: Multi-Agent Collaboration Framework (Version 0.1.0) 
+[Computer software]. https://github.com/graduy/lobster-legion
+https://doi.org/10.0000/lobster-legion.0.1.0
+```
+
+For more citation formats, see [CITATION.cff](CITATION.cff).
 
 ---
 

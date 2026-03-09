@@ -1,260 +1,628 @@
-# 🦞 Lobster Legion - 任务路由器
-# 职责：分析任务内容，匹配关键词，路由到合适的总龙虾
+# 🦞 Lobster Legion - Task Router (Optimized)
+# Analyzes tasks and routes them to appropriate chief lobsters
 
-param(
-    [string]$Message,
-    [hashtable]$Config,
-    [switch]$Verbose
-)
+param()
 
-# ==================== 关键词匹配 ====================
+# Import common utilities
+$commonPath = Join-Path (Split-Path -Parent $MyInvocation.MyCommand.Path) "common.ps1"
+if (Test-Path $commonPath) {
+    . $commonPath
+}
 
+# ==================== Keyword Matching ====================
+
+<#
+.SYNOPSIS
+    Tests if a message matches any of the provided keywords.
+.DESCRIPTION
+    Performs case-insensitive keyword matching with scoring.
+.PARAMETER Message
+    The message to analyze.
+.PARAMETER Keywords
+    Array of keywords to match.
+.EXAMPLE
+    $match = Test-KeywordMatch -Message "Help me code" -Keywords @("code", "debug")
+#>
 function Test-KeywordMatch {
     param(
+        [Parameter(Mandatory=$true)]
         [string]$Message,
+        [Parameter(Mandatory=$true)]
         [array]$Keywords
     )
     
     $messageLower = $Message.ToLower()
+    $bestMatch = $null
+    $bestScore = 0
     
     foreach ($keyword in $Keywords) {
-        if ($messageLower -match $keyword.ToLower()) {
-            return @{
-                matched = $true
-                keyword = $keyword
+        $keywordLower = $keyword.ToLower()
+        
+        # Exact match gets higher score
+        if ($messageLower -eq $keywordLower) {
+            $score = 1.0
+        }
+        # Word boundary match
+        elseif ($messageLower -match "\b$([regex]::Escape($keywordLower))\b") {
+            $score = 0.8
+        }
+        # Partial match (longer keywords preferred)
+        elseif ($messageLower -match [regex]::Escape($keywordLower)) {
+            $score = 0.5 + ($keyword.Length * 0.01)
+        }
+        else {
+            continue
+        }
+        
+        if ($score -gt $bestScore) {
+            $bestScore = $score
+            $bestMatch = @{
+                Matched = $true
+                Keyword = $keyword
+                Score = $score
             }
         }
     }
     
-    return @{ matched = $false }
+    return $bestMatch ?: @{ Matched = $false; Score = 0 }
 }
 
-# ==================== 指定总龙虾检测 ====================
+# ==================== Chief Detection ====================
 
+<#
+.SYNOPSIS
+    Detects if user specified a particular chief.
+.DESCRIPTION
+    Looks for @mention or "给 xxx" patterns in the message.
+.PARAMETER Message
+    The message to analyze.
+.EXAMPLE
+    $chief = Detect-SpecifiedChief -Message "@Doc Expert write this"
+#>
 function Detect-SpecifiedChief {
-    param([string]$Message)
+    param(
+        [Parameter(Mandatory=$true)]
+        [string]$Message
+    )
     
-    # 检测 @总龙虾 格式
-    if ($Message -match "@(\S+)") {
-        $specifiedId = $matches[1]
-        Write-Host "🎯 检测到指定总龙虾：$specifiedId" -ForegroundColor Cyan
-        return $specifiedId
+    # Pattern 1: @mention
+    if ($Message -match '@(\S+)') {
+        $specified = $Matches[1]
+        return @{
+            Specified = $specified
+            Pattern = '@mention'
+            Confidence = 0.95
+        }
     }
     
-    # 检测 "给 xxx" 格式
-    if ($Message -match "给 ([^\s,，]+)") {
-        $specifiedName = $matches[1]
-        Write-Host "🎯 检测到指定总龙虾：$specifiedName" -ForegroundColor Cyan
-        return $specifiedName
+    # Pattern 2: "给 xxx" (Chinese)
+    if ($Message -match '给 ([^\s,，]+)') {
+        $specified = $Matches[1]
+        return @{
+            Specified = $specified
+            Pattern = '给 xxx'
+            Confidence = 0.85
+        }
     }
     
-    return $null
+    # Pattern 3: "find xxx" or "ask xxx"
+    if ($Message -match '(?:find|ask)\s+(\S+)') {
+        $specified = $Matches[1]
+        return @{
+            Specified = $specified
+            Pattern = 'find/ask'
+            Confidence = 0.75
+        }
+    }
+    
+    return @{
+        Specified = $null
+        Pattern = $null
+        Confidence = 0
+    }
 }
 
-# ==================== 多任务检测 ====================
+# ==================== Multi-Task Detection ====================
 
+<#
+.SYNOPSIS
+    Detects if message contains multiple tasks.
+.DESCRIPTION
+    Identifies numbered lists, bullet points, or conjunction patterns.
+.PARAMETER Message
+    The message to analyze.
+.EXAMPLE
+    $multiTask = Detect-MultiTask -Message "1. Code 2. Test 3. Deploy"
+#>
 function Detect-MultiTask {
-    param([string]$Message)
+    param(
+        [Parameter(Mandatory=$true)]
+        [string]$Message
+    )
     
     $tasks = @()
     
-    # 检测列表格式 (1. 2. 3.)
-    if ($Message -match "(1\.|2\.|3\.)") {
+    # Pattern 1: Numbered list (1. 2. 3. or 1、2、3、)
+    if ($Message -match '(^\s*\d+[.,、]\s*.+){2,}') {
         $lines = $Message -split "`n"
         foreach ($line in $lines) {
-            if ($line -match "^\s*\d+\.?\s*(.+)") {
-                $tasks += $matches[1].Trim()
+            if ($line -match '^\s*\d+[.,、]?\s*(.+)') {
+                $taskText = $Matches[1].Trim()
+                if ($taskText) {
+                    $tasks += $taskText
+                }
             }
         }
     }
     
-    # 检测 "同时"、"并且" 等连接词
-    if ($Message -match "(同时 | 并且 | 还有 | 另外)") {
-        # 简单拆分
-        $parts = $Message -split "(同时 | 并且 | 还有 | 另外)"
-        $tasks += $parts | Where-Object { $_ -match "\S" }
-    }
-    
-    if ($tasks.Count -gt 1) {
-        Write-Host "📋 检测到多任务：$($tasks.Count) 个" -ForegroundColor Cyan
-        return @{
-            isMultiTask = $true
-            tasks = $tasks
+    # Pattern 2: Bullet points (- or •)
+    if ($tasks.Count -eq 0 -and $Message -match '(^\s*[-•]\s*.+){2,}') {
+        $lines = $Message -split "`n"
+        foreach ($line in $lines) {
+            if ($line -match '^\s*[-•]\s*(.+)') {
+                $taskText = $Matches[1].Trim()
+                if ($taskText) {
+                    $tasks += $taskText
+                }
+            }
         }
     }
     
-    return @{ isMultiTask = $false; tasks = @($Message) }
+    # Pattern 3: Conjunctions (同时，并且，还有，另外)
+    if ($tasks.Count -eq 0 -and $Message -match '(同时 | 并且 | 还有 | 另外|and|also|plus)') {
+        $parts = $Message -split '(同时 | 并且 | 还有 | 另外|and|also|plus)'
+        foreach ($part in $parts) {
+            $trimmed = $part.Trim()
+            if ($trimmed.Length -gt 10) {  # Avoid splitting small phrases
+                $tasks += $trimmed
+            }
+        }
+    }
+    
+    if ($tasks.Count -gt 1) {
+        return @{
+            IsMultiTask = $true
+            Tasks = $tasks
+            Count = $tasks.Count
+            DetectionMethod = 'list|conjunction'
+        }
+    }
+    
+    return @{
+        IsMultiTask = $false
+        Tasks = @($Message)
+        Count = 1
+        DetectionMethod = 'none'
+    }
 }
 
-# ==================== 路由决策 ====================
+# ==================== Task Complexity Analysis ====================
 
+<#
+.SYNOPSIS
+    Analyzes task complexity for dynamic worker allocation.
+.DESCRIPTION
+    Estimates task difficulty based on length, keywords, and structure.
+.PARAMETER Task
+    Task description.
+.PARAMETER Config
+    Configuration with complexity weights.
+.EXAMPLE
+    $complexity = Get-TaskComplexity -Task $task -Config $config
+#>
+function Get-TaskComplexity {
+    param(
+        [Parameter(Mandatory=$true)]
+        [string]$Task,
+        [hashtable]$Config = $null
+    )
+    
+    $score = 0
+    $factors = @{}
+    
+    # Factor 1: Length (longer = more complex)
+    $lengthScore = [Math]::Min(1.0, $Task.Length / 500)
+    $factors.Length = $lengthScore
+    $score += $lengthScore * 0.3
+    
+    # Factor 2: Domain keywords (more domains = more complex)
+    $domains = @{
+        Code = @("code", "program", "debug", "optimize", "refactor", "test", "deploy")
+        Docs = @("document", "write", "translate", "explain", "readme")
+        Research = @("research", "analyze", "compare", "survey", "market")
+        Design = @("design", "architecture", "system", "pattern", "structure")
+    }
+    
+    $taskLower = $Task.ToLower()
+    $domainCount = 0
+    foreach ($domain in $domains.Keys) {
+        foreach ($keyword in $domains[$domain]) {
+            if ($taskLower -match $keyword) {
+                $domainCount++
+                break
+            }
+        }
+    }
+    $domainScore = [Math]::Min(1.0, $domainCount / 3)
+    $factors.Domains = $domainScore
+    $score += $domainScore * 0.25
+    
+    # Factor 3: Dependency indicators
+    $dependencyKeywords = @("first.*then", "after.*before", "depends", "requires", "prerequisite")
+    $hasDependencies = 0
+    foreach ($pattern in $dependencyKeywords) {
+        if ($Task -match $pattern) {
+            $hasDependencies = 1
+            break
+        }
+    }
+    $factors.Dependencies = $hasDependencies
+    $score += $hasDependencies * 0.25
+    
+    # Factor 4: Precision requirements
+    $precisionKeywords = @("exactly", "precise", "detailed", "comprehensive", "thorough", "complete")
+    $hasPrecision = 0
+    foreach ($keyword in $precisionKeywords) {
+        if ($Task -match $keyword) {
+            $hasPrecision = 1
+            break
+        }
+    }
+    $factors.Precision = $hasPrecision
+    $score += $hasPrecision * 0.2
+    
+    # Check difficulty keywords for quick classification
+    $difficultyKeywords = @{
+        Easy = @("简单", "快速", "基础", "模板", "示例", "simple", "quick", "basic")
+        Medium = @("中等", "标准", "完整", "分析", "对比", "medium", "standard", "complete")
+        Hard = @("复杂", "深度", "全面", "系统", "优化", "complex", "deep", "comprehensive", "optimize")
+        Expert = @("极难", "创新", "突破", "多领域", "大规模", "expert", "innovative", "breakthrough", "multi-domain")
+    }
+    
+    $detectedDifficulty = "medium"
+    foreach ($level in $difficultyKeywords.Keys) {
+        foreach ($keyword in $difficultyKeywords[$level]) {
+            if ($Task -match $keyword) {
+                $detectedDifficulty = $level.ToLower()
+                break
+            }
+        }
+    }
+    $factors.Difficulty = $detectedDifficulty
+    
+    return @{
+        Score = [Math]::Round($score, 2)
+        Factors = $factors
+        Difficulty = $detectedDifficulty
+        RecommendedWorkers = Get-RecommendedWorkers -Score $score -Config $Config
+    }
+}
+
+<#
+.SYNOPSIS
+    Gets recommended number of workers based on complexity.
+.DESCRIPTION
+    Maps complexity score to worker count.
+.PARAMETER Score
+    Complexity score (0-1).
+.PARAMETER Config
+    Configuration with thresholds.
+.EXAMPLE
+    $workers = Get-RecommendedWorkers -Score 0.75
+#>
+function Get-RecommendedWorkers {
+    param(
+        [float]$Score,
+        [hashtable]$Config = $null
+    )
+    
+    # Use config thresholds if available
+    if ($Config -and $Config.subagents -and $Config.subagents.dynamicAllocation) {
+        $thresholds = $Config.subagents.dynamicAllocation.difficultyThresholds
+        
+        if ($Score -lt ($thresholds.easy ?: 0.3)) {
+            return Get-Random -Minimum 1 -Maximum 3
+        } elseif ($Score -lt ($thresholds.medium ?: 0.6)) {
+            return Get-Random -Minimum 2 -Maximum 5
+        } elseif ($Score -lt ($thresholds.hard ?: 0.8)) {
+            return Get-Random -Minimum 4 -Maximum 7
+        } else {
+            return Get-Random -Minimum 6 -Maximum 10
+        }
+    }
+    
+    # Default thresholds
+    if ($Score -lt 0.3) {
+        return Get-Random -Minimum 1 -Maximum 3
+    } elseif ($Score -lt 0.6) {
+        return Get-Random -Minimum 2 -Maximum 5
+    } elseif ($Score -lt 0.8) {
+        return Get-Random -Minimum 4 -Maximum 7
+    } else {
+        return Get-Random -Minimum 6 -Maximum 10
+    }
+}
+
+# ==================== Routing Decision ====================
+
+<#
+.SYNOPSIS
+    Makes routing decision for a single task.
+.DESCRIPTION
+    Analyzes task and determines best chief with confidence score.
+.PARAMETER Message
+    Task message.
+.PARAMETER Config
+    Configuration with chiefs and routing rules.
+.EXAMPLE
+    $decision = Get-RoutingDecision -Message "Optimize this code" -Config $config
+#>
 function Get-RoutingDecision {
     param(
+        [Parameter(Mandatory=$true)]
         [string]$Message,
+        [Parameter(Mandatory=$true)]
         [hashtable]$Config
     )
     
-    # 1. 检测是否指定了总龙虾
+    $logger = Get-Logger
+    
+    # Step 1: Check for specified chief
     $specifiedChief = Detect-SpecifiedChief -Message $Message
-    if ($specifiedChief) {
-        $chief = $Config.chiefs | Where-Object { 
-            $_.id -eq $specifiedChief -or $_.name -eq $specifiedChief 
+    if ($specifiedChief.Specified) {
+        $logger.Debug.Invoke("User specified chief: $($specifiedChief.Specified)")
+        
+        $chief = $Config.chiefs | Where-Object {
+            $_.id -eq $specifiedChief.Specified -or
+            $_.name -eq $specifiedChief.Specified -or
+            $_.id -like "*$($specifiedChief.Specified)*" -or
+            $_.name -like "*$($specifiedChief.Specified)*"
         }
         
         if ($chief) {
             return @{
-                chief = $chief
-                reason = "用户指定"
-                confidence = 1.0
+                Chief = $chief
+                Reason = "User specified: $($specifiedChief.Pattern)"
+                Confidence = $specifiedChief.Confidence
+                MatchedKeywords = @()
             }
+        } else {
+            $logger.Warn.Invoke("Specified chief not found: $($specifiedChief.Specified)")
         }
     }
     
-    # 2. 关键词匹配
+    # Step 2: Keyword matching with scoring
     $bestMatch = $null
     $bestScore = 0
     
     foreach ($rule in $Config.routing.rules) {
         $matchResult = Test-KeywordMatch -Message $Message -Keywords $rule.keywords
         
-        if ($matchResult.matched) {
-            $score = 1.0
+        if ($matchResult.Matched) {
+            $score = $matchResult.Score
             
-            # 优先级加分
+            # Priority bonus
             if ($rule.priority -eq "high") {
                 $score += 0.2
+            } elseif ($rule.priority -eq "normal") {
+                $score += 0.1
             }
             
-            # 关键词长度加分（越长越精确）
-            $score += ($matchResult.keyword.Length * 0.01)
+            # Multiple keyword matches bonus
+            $matchCount = ($rule.keywords | Where-Object { $Message.ToLower() -match [regex]::Escape($_.ToLower()) }).Count
+            if ($matchCount -gt 1) {
+                $score += ($matchCount - 1) * 0.1
+            }
             
             if ($score -gt $bestScore) {
                 $bestScore = $score
                 $bestMatch = @{
-                    chief = $Config.chiefs | Where-Object { $_.id -eq $rule.target }
-                    reason = "关键词匹配 '$($matchResult.keyword)'"
-                    confidence = $score
+                    Chief = $Config.chiefs | Where-Object { $_.id -eq $rule.target }
+                    Reason = "Keyword match: '$($matchResult.Keyword)' (score: $([math]::Round($score, 2)))"
+                    Confidence = [Math]::Min(1.0, $score)
+                    MatchedKeywords = @($matchResult.Keyword)
                 }
             }
         }
     }
     
-    # 3. 默认路由
+    # Step 3: Fallback to default
     if ($bestMatch) {
         return $bestMatch
     }
     
     $defaultChief = $Config.chiefs | Where-Object { $_.id -eq $Config.routing.default }
+    if (!$defaultChief) {
+        $defaultChief = $Config.chiefs | Select-Object -First 1
+    }
+    
     return @{
-        chief = $defaultChief
-        reason = "默认路由"
-        confidence = 0.5
+        Chief = $defaultChief
+        Reason = "Default routing (no matches found)"
+        Confidence = 0.5
+        MatchedKeywords = @()
     }
 }
 
-# ==================== 多任务路由 ====================
+# ==================== Multi-Task Routing ====================
 
+<#
+.SYNOPSIS
+    Routes multiple tasks to appropriate chiefs.
+.DESCRIPTION
+    Analyzes each task and groups by target chief.
+.PARAMETER Tasks
+    Array of task descriptions.
+.PARAMETER Config
+    Configuration object.
+.EXAMPLE
+    $routing = Route-MultiTasks -Tasks $tasks -Config $config
+#>
 function Route-MultiTasks {
     param(
+        [Parameter(Mandatory=$true)]
         [array]$Tasks,
+        [Parameter(Mandatory=$true)]
         [hashtable]$Config
     )
     
-    Write-Host "🔀 多任务路由分析..." -ForegroundColor Cyan
+    $logger = Get-Logger
+    $logger.Info.Invoke("Routing $($Tasks.Count) tasks...")
     
     $routingResults = @()
     
     foreach ($task in $Tasks) {
-        $result = Get-RoutingDecision -Message $task -Config $Config
+        $decision = Get-RoutingDecision -Message $task -Config $Config
+        
         $routingResults += @{
-            task = $task
-            chief = $result.chief
-            reason = $result.reason
+            Task = $task
+            Chief = $decision.Chief
+            Reason = $decision.Reason
+            Confidence = $decision.Confidence
+            MatchedKeywords = $decision.MatchedKeywords
         }
     }
     
-    # 按总龙虾分组
-    $grouped = $routingResults | Group-Object { $_.chief.id }
+    # Group by chief
+    $groupedByChief = $routingResults | Group-Object { $_.Chief.id }
     
-    Write-Host "📊 路由分组：$($grouped.Count) 个总龙虾" -ForegroundColor Green
+    $logger.Success.Invoke("Routed to $($groupedByChief.Count) chiefs")
     
     return @{
-        grouped = $grouped
-        details = $routingResults
+        Grouped = $groupedByChief
+        Details = $routingResults
+        TaskCount = $Tasks.Count
+        ChiefCount = $groupedByChief.Count
     }
 }
 
-# ==================== 主函数 ====================
+# ==================== Main Router Function ====================
 
+<#
+.SYNOPSIS
+    Main entry point for task routing.
+.DESCRIPTION
+    Analyzes message and returns routing decision(s).
+.PARAMETER Message
+    User message to route.
+.PARAMETER Config
+    Configuration object.
+.EXAMPLE
+    $result = Invoke-TaskRouter -Message "Help me code" -Config $config
+#>
 function Invoke-TaskRouter {
     param(
+        [Parameter(Mandatory=$true)]
         [string]$Message,
+        [Parameter(Mandatory=$true)]
         [hashtable]$Config
     )
     
-    Write-Host "`n🔀 ========================================" -ForegroundColor Magenta
-    Write-Host "🔀       Lobster Legion - 任务路由        " -ForegroundColor Magenta
-    Write-Host "🔀 ========================================" -ForegroundColor Magenta
+    $logger = Get-Logger
+    Start-Performance "TaskRouting"
     
-    # 检测是否多任务
-    $multiTaskInfo = Detect-MultiTask -Message $Message
-    
-    if ($multiTaskInfo.isMultiTask) {
-        # 多任务路由
-        $result = Route-MultiTasks -Tasks $multiTaskInfo.tasks -Config $Config
+    try {
+        $logger.Info.Invoke("Analyzing task...")
         
-        Write-Host "`n📋 路由结果:" -ForegroundColor Cyan
-        foreach ($detail in $result.details) {
-            Write-Host "  • '$($detail.task.Substring(0, 40))...' → $($detail.chief.name) ($($detail.reason))" -ForegroundColor Gray
+        # Detect multi-task
+        $multiTaskInfo = Detect-MultiTask -Message $Message
+        
+        if ($multiTaskInfo.IsMultiTask) {
+            $logger.Info.Invoke("Detected $($multiTaskInfo.Count) tasks")
+            
+            $result = Route-MultiTasks -Tasks $multiTaskInfo.Tasks -Config $Config
+            
+            Stop-Performance "TaskRouting" | Out-Null
+            
+            return @{
+                IsMultiTask = $true
+                TaskCount = $result.TaskCount
+                ChiefCount = $result.ChiefCount
+                Grouped = $result.Grouped
+                Details = $result.Details
+                Complexity = $multiTaskInfo | ForEach-Object {
+                    Get-TaskComplexity -Task $_.Tasks
+                }
+            }
+        } else {
+            $result = Get-RoutingDecision -Message $Message -Config $Config
+            
+            $complexity = Get-TaskComplexity -Task $Message -Config $Config
+            
+            Stop-Performance "TaskRouting" | Out-Null
+            
+            return @{
+                IsMultiTask = $false
+                Chief = $result.Chief
+                Reason = $result.Reason
+                Confidence = $result.Confidence
+                MatchedKeywords = $result.MatchedKeywords
+                Complexity = $complexity
+                RecommendedWorkers = $complexity.RecommendedWorkers
+            }
         }
-        
-        return @{
-            isMultiTask = $true
-            grouped = $result.grouped
-            details = $result.details
-        }
-    } else {
-        # 单任务路由
-        $result = Get-RoutingDecision -Message $Message -Config $Config
-        
-        Write-Host "`n✅ 路由决策:" -ForegroundColor Green
-        Write-Host "  总龙虾：$($result.chief.name)" -ForegroundColor Cyan
-        Write-Host "  原因：$($result.reason)" -ForegroundColor Gray
-        Write-Host "  置信度：$([math]::Round($result.confidence * 100, 1))%" -ForegroundColor Gray
-        
-        return @{
-            isMultiTask = $false
-            chief = $result.chief
-            reason = $result.reason
-            confidence = $result.confidence
-        }
+    }
+    catch {
+        Stop-Performance "TaskRouting" | Out-Null
+        $logger.Error.Invoke("Routing failed: $_")
+        throw
     }
 }
 
-# ==================== 导出函数 ====================
+# ==================== Exports ====================
 
-Export-ModuleMember -Function Invoke-TaskRouter, Get-RoutingDecision, Detect-MultiTask
+Export-ModuleMember -Function Invoke-TaskRouter, Get-RoutingDecision, 
+                      Detect-MultiTask, Detect-SpecifiedChief,
+                      Test-KeywordMatch, Get-TaskComplexity,
+                      Route-MultiTasks, Get-RecommendedWorkers
 
-# ==================== 命令行入口 ====================
+# ==================== CLI Entry Point ====================
 
 if ($MyInvocation.InvocationName -eq $MyInvocation.ScriptName) {
-    # 测试
+    Write-Host "`n🔀 Testing Task Router" -ForegroundColor Magenta
+    
     $testConfig = @{
         chiefs = @(
-            @{ id = "chief-code"; name = "代码专家" },
-            @{ id = "chief-doc"; name = "文档专家" },
-            @{ id = "chief-research"; name = "调研专家" }
+            @{ id = "chief-code"; name = "代码专家"; specialty = @("代码", "编程", "debug") },
+            @{ id = "chief-doc"; name = "文档专家"; specialty = @("文档", "写作", "翻译") },
+            @{ id = "chief-research"; name = "调研专家"; specialty = @("调研", "搜索", "分析") }
         )
         routing = @{
             default = "chief-code"
             rules = @(
-                @{ keywords = @("代码", "编程"); target = "chief-code"; priority = "high" },
-                @{ keywords = @("文档", "写"); target = "chief-doc"; priority = "normal" },
-                @{ keywords = @("调研", "搜索"); target = "chief-research"; priority = "normal" }
+                @{ keywords = @("代码", "编程", "debug"); target = "chief-code"; priority = "high" },
+                @{ keywords = @("文档", "写作", "翻译"); target = "chief-doc"; priority = "normal" },
+                @{ keywords = @("调研", "搜索", "分析"); target = "chief-research"; priority = "normal" }
             )
         }
     }
     
-    $testMessage = "帮我写代码，同时写文档"
-    Invoke-TaskRouter -Message $testMessage -Config $testConfig
+    $testCases = @(
+        "帮我优化这段代码",
+        "@文档专家 翻译这个文档",
+        "帮我调研 AI 市场，同时写代码实现",
+        "1. 写代码 2. 写文档 3. 测试"
+    )
+    
+    foreach ($test in $testCases) {
+        Write-Host "`nTest: $test" -ForegroundColor Cyan
+        $result = Invoke-TaskRouter -Message $test -Config $testConfig
+        
+        if ($result.IsMultiTask) {
+            Write-Host "  Multi-task: $($result.TaskCount) tasks → $($result.ChiefCount) chiefs" -ForegroundColor Green
+            foreach ($detail in $result.Details) {
+                Write-Host "    • '$(Truncate-String $detail.Task 40)' → $($detail.Chief.name)" -ForegroundColor Gray
+            }
+        } else {
+            Write-Host "  Routed to: $($result.Chief.name)" -ForegroundColor Green
+            Write-Host "  Reason: $($result.Reason)" -ForegroundColor Gray
+            Write-Host "  Confidence: $([math]::Round($result.Confidence * 100, 1))%" -ForegroundColor Gray
+        }
+    }
+    
+    $report = Get-PerformanceReport
+    Write-Host "`nPerformance:" -ForegroundColor Magenta
+    foreach ($metric in $report) {
+        Write-Host "  $($metric.Operation): $($metric.Count) calls, avg $([math]::Round($metric.AverageMs, 1))ms" -ForegroundColor Yellow
+    }
 }

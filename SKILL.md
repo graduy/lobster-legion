@@ -17,12 +17,15 @@
 3. **子 Agent 协调** - 总龙虾可 spawn 多个子 Agent 并行执行
 4. **结果汇总** - 自动收集各 Agent 结果，统一汇报
 5. **知识库隔离** - 每个总龙虾有独立的知识库/工作空间
+6. **引用管理** - 支持学术论文写作的参考文献管理（BibTeX 格式）
+7. **论文写作模板** - 内置标准论文结构模板（Abstract/Intro/Methodology 等）
 
 ## 配置方式
 1. 复制 `config.example.yml` 为 `config.yml`
 2. 配置总龙虾数量、专长、agentId
 3. 配置任务路由规则
 4. 配置知识库路径
+5. （可选）配置论文写作模板和引用格式
 
 ## 依赖
 - OpenClaw `sessions_spawn` 工具
@@ -34,15 +37,18 @@
 lobster-legion/
 ├── SKILL.md                 # 本文件
 ├── README.md                # 用户使用文档
-├── config.example.yml       # 配置模板
+├── config.example.yml       # 配置模板（含论文写作配置）
 ├── src/
 │   ├── coordinator.ps1      # 总协调器（总总龙虾）
 │   ├── chief-lobster.ps1    # 总龙虾模板
 │   ├── router.ps1           # 任务路由
-│   └── knowledge-base.ps1   # 知识库管理
-└── examples/
-    └── basic-usage.md       # 使用示例
+│   └── knowledge-base.ps1   # 知识库管理（含引用管理）
+├── examples/
+│   └── usage-examples.md    # 使用示例（含论文写作案例）
+└── test/
+    └── test.ps1             # 测试脚本
 ```
 
 ## 版本
 v0.1.0 - 初始框架
+v0.2.0 - 新增论文写作场景、引用管理功能

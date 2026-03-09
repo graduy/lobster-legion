@@ -70,7 +70,7 @@ subagents:
   maxWorkersPerChief: 6
   
   # 全局最大并发 Agent 数 (硬限制)
-  maxConcurrentAgents: 36
+  maxConcurrentAgents: 60  # 提升上限支持更大规模实验
   
   # Token 预算控制
   tokenBudget:
@@ -80,6 +80,32 @@ subagents:
     maxTokensPerTask: 500000
     # 超出预算时：warn (警告但继续) | stop (停止 spawn)
     onBudgetExceeded: warn
+
+  # ==================== 动态小龙虾分配 (智能编队!) ====================
+  # 根据任务难度动态分配小龙虾数量
+  dynamicAllocation:
+    enabled: true
+    
+    # 难度阈值（0-1）
+    difficultyThresholds:
+      easy: 0.3      # <0.3 → 1-2 只小龙虾
+      medium: 0.6    # 0.3-0.6 → 3-4 只
+      hard: 0.8      # 0.6-0.8 → 5-6 只
+      expert: 1.0    # ≥0.8 → 6+ 只（多总龙虾）
+    
+    # 复杂度计算权重
+    complexityWeights:
+      length: 0.3        # 任务长度权重
+      domains: 0.25      # 领域数量权重
+      dependencies: 0.25 # 依赖复杂度权重
+      precision: 0.2     # 精度要求权重
+    
+    # 难度评估关键词
+    difficultyKeywords:
+      easy: ["简单", "快速", "基础", "模板", "示例"]
+      medium: ["中等", "标准", "完整", "分析", "对比"]
+      hard: ["复杂", "深度", "全面", "系统", "优化"]
+      expert: ["极难", "创新", "突破", "多领域", "大规模"]
 
 # ==================== 日志配置 ====================
 

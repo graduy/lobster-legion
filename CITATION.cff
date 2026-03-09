@@ -1,0 +1,42 @@
+cff-version: 1.2.0
+message: "If you use Lobster Legion in your research, please cite it using the following reference."
+title: "Lobster Legion: Multi-Agent Collaboration Framework"
+abstract: "A configurable multi-agent collaboration framework for OpenClaw with hierarchical task distribution, smart routing, and token budget control."
+authors:
+  - family-names: "Grady"
+    given-names: "Your Name"
+    orcid: "https://orcid.org/XXXX-XXXX-XXXX-XXXX"
+    affiliation: "Your Institution"
+version: 0.1.0
+doi: "10.0000/lobster-legion.0.1.0"
+date-released: 2026-03-09
+url: "https://github.com/graduy/lobster-legion"
+license: MIT
+keywords:
+  - "multi-agent systems"
+  - "LLM"
+  - "task distribution"
+  - "OpenClaw"
+  - "agent collaboration"
+
+# Example BibTeX citation:
+# @software{lobster_legion_2026,
+#   author       = {Grady, Your Name},
+#   title        = {Lobster Legion: Multi-Agent Collaboration Framework},
+#   abstract     = {A configurable multi-agent collaboration framework for OpenClaw},
+#   version      = {0.1.0},
+#   doi          = {10.0000/lobster-legion.0.1.0},
+#   url          = {https://github.com/graduy/lobster-legion},
+#   license      = {MIT},
+#   date         = {2026-03-09},
+#   keywords     = {multi-agent systems, LLM, task distribution, OpenClaw}
+# }
+
+# Example APA citation:
+# Grady, Y. (2026). Lobster Legion: Multi-Agent Collaboration Framework (Version 0.1.0) 
+# [Computer software]. https://github.com/graduy/lobster-legion
+# https://doi.org/10.0000/lobster-legion.0.1.0
+
+# Example ACL citation:
+# Grady, Your Name. 2026. Lobster Legion: Multi-Agent Collaboration Framework. 
+# Version 0.1.0. https://github.com/graduy/lobster-legion. DOI:10.0000/lobster-legion.0.1.0.

@@ -31,6 +31,16 @@ chiefs:
     maxSubAgents: 5
     enabled: true
 
+  # 论文专家 (新增 - 论文写作专用)
+  - id: chief-paper
+    name: 论文专家
+    agentId: main
+    specialty: ["论文", "学术写作", "methodology", "experiment", "related work", "citation", "参考文献"]
+    workspace: ./workspaces/paper
+    maxSubAgents: 5
+    template: paper-writing
+    enabled: true
+
 # ==================== 任务路由配置 ====================
 # 定义任务如何自动分配给总龙虾
 
@@ -42,6 +52,10 @@ routing:
   rules:
     - keywords: ["代码", "编程", "debug", "bug", "优化", "refactor", "review"]
       target: chief-code
+      priority: high
+    
+    - keywords: ["论文", "学术写作", "methodology", "experiment", "citation", "参考文献"]
+      target: chief-paper
       priority: high
     
     - keywords: ["文档", "写", "翻译", "readme", "说明", "markdown"]
@@ -143,6 +157,81 @@ notifications:
     url: ""
     method: POST
     headers: {}
+
+# ==================== 论文写作专用配置 ====================
+# 针对学术论文写作的特殊配置
+
+paperWriting:
+  # 论文写作模板
+  templates:
+    # 标准学术论文结构
+    standard:
+      sections:
+        - title: "Abstract"
+          description: "200-300 字摘要，包含研究背景、方法、结果、结论"
+        - title: "Introduction"
+          description: "研究背景、问题陈述、贡献总结"
+        - title: "Related Work"
+          description: "相关工作综述，引用关键文献"
+        - title: "Methodology"
+          description: "方法详述，包含公式、算法、架构图"
+        - title: "Experiments"
+          description: "实验设置、数据集、对比方法、评估指标"
+        - title: "Results and Analysis"
+          description: "实验结果、消融实验、可视化分析"
+        - title: "Conclusion"
+          description: "总结与未来工作"
+      citationStyle: "ACL"  # ACL/EMNLP/NeurIPS/IEEE/APA
+    
+    # 快速报告结构
+    short-paper:
+      sections:
+        - title: "Introduction"
+        - title: "Method"
+        - title: "Experiments"
+        - title: "Conclusion"
+      citationStyle: "ACL"
+  
+  # 引用管理配置
+  citation:
+    # 默认引用格式
+    defaultStyle: "ACL"
+    
+    # 支持的引用格式
+    styles:
+      - "ACL"
+      - "EMNLP"
+      - "NeurIPS"
+      - "IEEE"
+      - "APA"
+      - "MLA"
+      - "BibTeX"
+    
+    # 参考文献存储路径
+    storagePath: ./knowledge-base/chief-paper/references
+    
+    # 自动检测重复引用
+    detectDuplicates: true
+    
+    # 自动生成 BibTeX key
+    autoGenerateBibTeXKey: true
+  
+  # 学术写作规范
+  writingStyle:
+    # 语气：formal (正式) | semi-formal (半正式)
+    tone: formal
+    
+    # 人称：first-person (第一人称) | third-person (第三人称)
+    person: "first-person"
+    
+    # 时态：present (现在时) | past (过去时)
+    tense: "present"
+    
+    # 避免的词汇
+    avoidWords: ["very", "really", "quite", "basically", "actually"]
+    
+    # 推荐连接词
+    transitionWords: ["however", "therefore", "furthermore", "moreover", "consequently"]
 
 # ==================== 版本信息 ====================
 
